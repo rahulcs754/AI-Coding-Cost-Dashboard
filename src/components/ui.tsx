@@ -49,7 +49,7 @@ export function KpiRow({ totals, days }: { totals: Totals; days: number }) {
         sub={d ? <span className={d.up ? "text-up" : "text-down"}>{d.label} vs previous {days}d</span> : "No previous data"}
       />
       <Stat label="Tokens" value={formatTokens(totals.tokens)} sub={`${totals.events.toLocaleString()} sessions logged`} />
-      <Stat label="PRs with AI spend" value={totals.prs.toLocaleString()} sub={`${totals.authors} authors`} />
+      <Stat label="PRs with AI spend" value={totals.prs.toLocaleString()} sub={`${totals.authors} author${totals.authors === 1 ? "" : "s"}`} />
       <Stat label="Avg cost per PR" value={totals.prs ? formatUsd(totals.cost / totals.prs) : "—"} />
     </div>
   );

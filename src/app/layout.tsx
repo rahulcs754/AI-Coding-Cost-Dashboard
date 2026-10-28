@@ -31,6 +31,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               AI Coding Cost
             </Link>
             <span className="hidden text-sm text-muted sm:inline">token spend per repo and PR</span>
+            <nav className="ml-auto flex gap-4 text-sm">
+              <Link href="/" className="text-muted hover:text-foreground">Overview</Link>
+              <Link href="/users" className="text-muted hover:text-foreground">Users</Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>

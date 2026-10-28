@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BreakdownList, Card, DashboardSkeleton } from "@/components/ui";
-import { formatDate, formatTokens, formatUsd, repoHref } from "@/lib/format";
+import { formatDate, formatTokens, formatUsd, repoHref, userHref } from "@/lib/format";
 import { getPrSessions, getPrTitle, type Breakdown, type SessionRow } from "@/lib/queries";
 
 type Props = PageProps<"/repos/[owner]/[name]/pulls/[number]">;
@@ -50,7 +50,7 @@ async function PrDashboard({ params }: Pick<Props, "params">) {
         </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="By author"><BreakdownList rows={groupBy(sessions, "author")} /></Card>
+        <Card title="By author"><BreakdownList rows={groupBy(sessions, "author")} hrefFor={userHref} /></Card>
         <Card title="By model"><BreakdownList rows={groupBy(sessions, "model")} /></Card>
         <Card title="By tool"><BreakdownList rows={groupBy(sessions, "tool")} /></Card>
       </div>
