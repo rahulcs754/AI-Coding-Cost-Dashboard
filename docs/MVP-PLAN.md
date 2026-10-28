@@ -26,4 +26,4 @@ Auto-seed 90 days of realistic fake data for 4 repos, so the deployed demo looks
 - Cursor / Codex importers, team login
 
 ## Status
-Started: pricing table, event types and validation (in `src/lib/`). Paused until the GitHub repo is ready.
+MVP built: overview, repo and PR pages, ingest API, Claude Code CLI, demo seed.
