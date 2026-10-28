@@ -21,7 +21,9 @@ Pages:
 
 Demo data: auto-seed 90 days of realistic fake data for 4 repos when the DB is empty.
 
-Later: GitHub App that comments "this PR cost $X in AI tokens", budgets and Slack alerts, Cursor/Codex importers, team login.
+Users and team: /users shows each developer's agents, models and spend. /team handles GitHub login (Auth.js, JWT sessions) with admin/member roles; the proxy checks the role on every request. With no OAuth env vars the app runs in demo mode.
+
+Later: GitHub App that comments "this PR cost $X in AI tokens", budgets and Slack alerts, Cursor/Codex importers, Postgres.
 
 Starter code already written: src/lib/pricing.ts, src/lib/types.ts, src/lib/validate.ts.
 
