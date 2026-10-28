@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS usage_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON usage_events (ts);
 CREATE INDEX IF NOT EXISTS idx_events_repo_pr ON usage_events (repo, pr);
+CREATE TABLE IF NOT EXISTS members (
+  login TEXT PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
+  added_by TEXT,
+  added_at TEXT NOT NULL
+);
 `;
 
 let db: DatabaseSync | undefined;

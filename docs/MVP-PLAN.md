@@ -18,13 +18,15 @@
 3. **PR** `/repos/[owner]/[name]/pulls/[number]`: cost by model and author, list of sessions.
 4. **Users** `/users`: each developer, the agents and models they use, sessions, PRs and spend. `/users/[author]` shows one person's trend, agents, models, repos and PRs.
 
+5. **Team** `/team`: sign in with GitHub (Auth.js). Admins invite members by GitHub username with an admin or member role. Login is off in demo mode.
+
 ## Demo data
 Auto-seed 90 days of realistic fake data for 4 repos, so the deployed demo looks alive.
 
 ## Later (after MVP)
 - GitHub App that posts "this PR cost $X in AI tokens" as a PR comment
 - Budgets and Slack alerts per repo
-- Cursor / Codex importers, team login
+- Cursor / Codex importers
 
 ## Status
 MVP built: overview, repo and PR pages, ingest API, Claude Code CLI, demo seed.
