@@ -10,7 +10,7 @@ export function parseRange(value: string | string[] | undefined): Range {
   return (RANGES as readonly number[]).includes(n) ? (n as Range) : 30;
 }
 
-export type Scope = { repo?: string; pr?: number };
+export type Scope = { repo?: string; pr?: number; author?: string };
 
 export type Totals = {
   cost: number;
@@ -59,6 +59,10 @@ async function scoped(days: number, scope: Scope) {
   if (scope.pr != null) {
     clauses.push("pr = ?");
     params.push(scope.pr);
+  }
+  if (scope.author) {
+    clauses.push("author = ?");
+    params.push(scope.author);
   }
   const where = clauses.length ? ` AND ${clauses.join(" AND ")}` : "";
   return { db: getDb(), since, prevSince, where, params };
@@ -123,6 +127,29 @@ export async function getPrs(days: number, scope: Scope = {}, limit = 50): Promi
        GROUP BY repo, pr ORDER BY cost DESC LIMIT ?`,
     )
     .all(since, ...params, limit) as PrRow[];
+}
+
+export type UserRow = {
+  author: string;
+  cost: number;
+  tokens: number;
+  sessions: number;
+  prs: number;
+  tools: string;
+  models: string;
+  lastTs: string;
+};
+
+export async function getUsers(days: number): Promise<UserRow[]> {
+  const { db, since } = await scoped(days, {});
+  return db
+    .prepare(
+      `SELECT author, SUM(cost_usd) AS cost, SUM(${TOKENS}) AS tokens, COUNT(DISTINCT COALESCE(session_id, id)) AS sessions,
+         COUNT(DISTINCT CASE WHEN pr IS NOT NULL THEN repo || '#' || pr END) AS prs,
+         GROUP_CONCAT(DISTINCT tool) AS tools, GROUP_CONCAT(DISTINCT model) AS models, MAX(ts) AS lastTs
+       FROM usage_events WHERE ts >= ? GROUP BY author ORDER BY cost DESC`,
+    )
+    .all(since) as UserRow[];
 }
 
 // A PR page shows its whole history, not just the selected window.

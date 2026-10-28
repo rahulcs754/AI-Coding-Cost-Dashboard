@@ -17,3 +17,4 @@ export function delta(current: number, previous: number): { label: string; up: b
 
 export const repoHref = (repo: string) => `/repos/${repo}`;
 export const prHref = (repo: string, pr: number) => `/repos/${repo}/pulls/${pr}`;
+export const userHref = (author: string) => `/users/${encodeURIComponent(author)}`;

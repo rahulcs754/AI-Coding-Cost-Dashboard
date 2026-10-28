@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { PrTable } from "@/components/pr-table";
 import { SpendChart } from "@/components/spend-chart";
 import { BreakdownList, Card, DashboardSkeleton, KpiRow, RangeTabs } from "@/components/ui";
-import { repoHref } from "@/lib/format";
+import { repoHref, userHref } from "@/lib/format";
 import { getBreakdown, getDaily, getPrs, getTotals, parseRange } from "@/lib/queries";
 
 type Props = PageProps<"/repos/[owner]/[name]">;
@@ -42,7 +42,7 @@ async function RepoDashboard({ params, searchParams }: Props) {
       </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="By author">
-          <BreakdownList rows={authors} />
+          <BreakdownList rows={authors} hrefFor={userHref} />
         </Card>
         <Card title="By model">
           <BreakdownList rows={models} />

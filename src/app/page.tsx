@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { PrTable } from "@/components/pr-table";
 import { SpendChart } from "@/components/spend-chart";
 import { BreakdownList, Card, DashboardSkeleton, KpiRow, RangeTabs } from "@/components/ui";
-import { repoHref } from "@/lib/format";
+import { repoHref, userHref } from "@/lib/format";
 import { getBreakdown, getDaily, getPrs, getTotals, parseRange } from "@/lib/queries";
 
 export default function Home({ searchParams }: PageProps<"/">) {
@@ -18,10 +18,11 @@ export default function Home({ searchParams }: PageProps<"/">) {
 
 async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const days = parseRange((await searchParams).days);
-  const [totals, daily, repos, models, tools, prs] = await Promise.all([
+  const [totals, daily, repos, users, models, tools, prs] = await Promise.all([
     getTotals(days),
     getDaily(days),
     getBreakdown("repo", days),
+    getBreakdown("author", days),
     getBreakdown("model", days),
     getBreakdown("tool", days),
     getPrs(days, {}, 10),
@@ -34,9 +35,12 @@ async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) 
       <Card title="Daily spend">
         <SpendChart data={daily} />
       </Card>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card title="By repo">
           <BreakdownList rows={repos} hrefFor={repoHref} />
+        </Card>
+        <Card title="By user">
+          <BreakdownList rows={users} hrefFor={userHref} />
         </Card>
         <Card title="By model">
           <BreakdownList rows={models} />
