@@ -1,7 +1,7 @@
 node_modules/
 .next/
 out/
-data/*.db
+data/
 .env*
 !.env.example
 .DS_Store
