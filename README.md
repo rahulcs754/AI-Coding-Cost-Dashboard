@@ -4,6 +4,8 @@ See how much your team spends on AI coding agents (Claude Code, Cursor, Codex), 
 
 Built with Next.js 16 (App Router, Cache Components), TypeScript, Tailwind v4 and SQLite (`node:sqlite`).
 
+![Overview](docs/screenshots/overview.png)
+
 ## Run it
 
 Needs Node 22.13 or newer.
