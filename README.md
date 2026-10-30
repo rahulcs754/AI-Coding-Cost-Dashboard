@@ -64,4 +64,3 @@ To turn it on:
 ## Docs
 
 - [docs/PROJECT-INSTRUCTIONS.md](docs/PROJECT-INSTRUCTIONS.md)
-- [docs/MVP-PLAN.md](docs/MVP-PLAN.md)
