@@ -6,6 +6,17 @@ Built with Next.js 16 (App Router, Cache Components), TypeScript, Tailwind v4 an
 
 ![Overview](docs/screenshots/overview.png)
 
+## What you get
+
+| Page | What it shows |
+| --- | --- |
+| **Overview** (`/`) | Spend for 7, 30 or 90 days, daily chart, breakdown by repo, user, model and tool, most expensive PRs |
+| **Repo** (`/repos/<owner>/<name>`) | The same view for one repo |
+| **PR** (`/repos/<owner>/<name>/pulls/<n>`) | Every agent session on one PR, with tokens and cost ([screenshot](docs/screenshots/pr.png)) |
+| **Users** (`/users`) | Who uses which agents and models, sessions, PRs and cost per person ([screenshot](docs/screenshots/users.png)) |
+| **Cache** (`/cache`) | Prompt cache hit rate, money saved and lost, and what broke the cache ([screenshot](docs/screenshots/cache.png)) |
+| **Team** (`/team`) | Invite or remove people when login is on ([screenshot](docs/screenshots/team.png)) |
+
 ## Run it
 
 Needs Node 22.13 or newer.
@@ -78,6 +89,14 @@ To turn it on:
 | `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | GitHub OAuth App credentials. Leave unset for demo mode |
 | `AUTH_SECRET` | Secret for signing sessions (`npx auth secret`) |
 | `ADMIN_GITHUB_LOGINS` | Comma-separated GitHub usernames that are always admins |
+
+## Deploy on Vercel
+
+1. Import the repo on vercel.com/new (framework: Next.js).
+2. Set `INGEST_TOKEN`. Add the login variables below if you want login.
+3. Point `scripts/report-usage.mjs --url` (or your own client) at the deployed URL.
+
+On Vercel the SQLite file lives in `/tmp`, so data resets when the function restarts. That is fine for a demo. For real use, set `DATABASE_PATH` to a persistent disk or move the queries to a hosted database.
 
 ## Docs
 
