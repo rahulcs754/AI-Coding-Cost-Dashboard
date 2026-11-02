@@ -24,7 +24,7 @@ Open http://localhost:3000. On first start the database (`data/usage.db`) is fil
 ```bash
 curl -X POST http://localhost:3000/api/events \
   -H "authorization: Bearer $INGEST_TOKEN" -H "content-type: application/json" \
-  -d '{"repo":"acme/web-app","pr":42,"author":"priya","tool":"claude-code","model":"claude-opus-5-5","inputTokens":120000,"outputTokens":8000}'
+  -d '{"repo":"acme/web-app","pr":42,"author":"priya","tool":"claude-code","model":"claude-opus-5-5","inputTokens":120000,"outputTokens":8000,"cacheReadTokens":900000,"cacheWriteTokens":60000,"cacheRebuilds":1,"idleRebuilds":1}'
 ```
 
 Cost is computed at ingest from `src/lib/pricing.ts` and stored.
@@ -37,6 +37,24 @@ Cost is computed at ingest from `src/lib/pricing.ts` and stored.
 INGEST_TOKEN=... node scripts/report-usage.mjs --url http://localhost:3000 --since 7d
 node scripts/report-usage.mjs --dry-run   # print, don't upload
 ```
+
+## Prompt cache tab
+
+`/cache` shows how well prompt caching works for your team:
+
+![Prompt cache tab](docs/screenshots/cache.png)
+
+- **Cache hit rate**: cache-read tokens ÷ all prompt tokens, overall and per model, tool and user.
+- **Saved by cache**: what cached reads saved vs. full input price.
+- **Lost to cache breaks**: an estimate of what rebuilt caches cost (writes beyond ~10% of the prompt, priced as write minus read).
+- **What broke your cache**: causes ranked by money lost, each with a fix:
+  - *Idle over 5 min*: the cache expired between turns.
+  - *Model switched*: cache is per model.
+  - *Prompt prefix changed*: CLAUDE.md / system prompt edits, MCP servers or tools changed, a timestamp near the top.
+  - *No caching*: big prompts sent with no cache breakpoints.
+- **Sessions that lost the most**, linked to their PR.
+
+`scripts/report-usage.mjs` reads each call's `cache_creation_input_tokens` and `cache_read_input_tokens` and sends two optional fields per session: `cacheRebuilds` (later calls that wrote the prompt to cache instead of reading it) and `idleRebuilds` (those after 5+ minutes idle). Other clients can send them too; without them the tab still shows hit rate, savings and losses. Existing databases get the new columns automatically.
 
 ## Login and team
 

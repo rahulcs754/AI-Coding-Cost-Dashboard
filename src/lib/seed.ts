@@ -49,6 +49,11 @@ export function seedEvents(days = 90, now = new Date()): UsageEventInput[] {
         const ts = new Date(now.getTime() - day * 86_400_000 - Math.floor(rand() * 10) * 3_600_000);
         const { tool, model } = pickModel();
         const calls = 5 + Math.floor(rand() * 40);
+        // About 1 in 5 sessions loses its cache: idle gaps or a changed prompt prefix.
+        const broken = rand() < 0.2;
+        const rebuilds = broken ? 2 + Math.floor(rand() * Math.min(calls, 12)) : 0;
+        const idle = broken ? Math.floor(rand() * (rebuilds + 1)) : 0;
+        const cacheRead = calls * Math.floor(20_000 + rand() * 60_000);
         events.push({
           ts: ts.toISOString(),
           repo,
@@ -61,8 +66,10 @@ export function seedEvents(days = 90, now = new Date()): UsageEventInput[] {
           sessionId: `seed-${pr}-${s}`,
           inputTokens: calls * Math.floor(2_000 + rand() * 6_000),
           outputTokens: calls * Math.floor(300 + rand() * 1_500),
-          cacheWriteTokens: calls * Math.floor(rand() * 8_000),
-          cacheReadTokens: calls * Math.floor(20_000 + rand() * 60_000),
+          cacheWriteTokens: calls * Math.floor(rand() * 8_000) + rebuilds * Math.floor(30_000 + rand() * 50_000),
+          cacheReadTokens: broken ? Math.floor(cacheRead * (0.2 + rand() * 0.4)) : cacheRead,
+          cacheRebuilds: rebuilds,
+          idleRebuilds: idle,
         });
       }
     }

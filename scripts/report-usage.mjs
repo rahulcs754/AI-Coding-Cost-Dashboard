@@ -124,12 +124,29 @@ for (const file of jsonlFiles(args.dir)) {
       outputTokens: 0,
       cacheWriteTokens: 0,
       cacheReadTokens: 0,
+      cacheRebuilds: 0,
+      idleRebuilds: 0,
+      calls: [],
     };
+    s.calls.push({ t: Date.parse(rec.timestamp), write: msg.usage.cache_creation_input_tokens ?? 0, read: msg.usage.cache_read_input_tokens ?? 0 });
     s.inputTokens += msg.usage.input_tokens ?? 0;
     s.outputTokens += msg.usage.output_tokens ?? 0;
     s.cacheWriteTokens += msg.usage.cache_creation_input_tokens ?? 0;
     s.cacheReadTokens += msg.usage.cache_read_input_tokens ?? 0;
     sessions.set(key, s);
+  }
+}
+
+// A later call that wrote most of its prompt to cache instead of reading it rebuilt the cache.
+// After more than 5 minutes idle the cache had expired; otherwise the prompt prefix changed.
+const CACHE_TTL_MS = 5 * 60_000;
+for (const s of sessions.values()) {
+  s.calls.sort((a, b) => a.t - b.t);
+  for (let i = 1; i < s.calls.length; i++) {
+    const c = s.calls[i];
+    if (c.write < 1024 || c.write <= c.read) continue;
+    s.cacheRebuilds++;
+    if (c.t - s.calls[i - 1].t > CACHE_TTL_MS) s.idleRebuilds++;
   }
 }
 
@@ -156,6 +173,8 @@ for (const s of sessions.values()) {
     outputTokens: s.outputTokens,
     cacheWriteTokens: s.cacheWriteTokens,
     cacheReadTokens: s.cacheReadTokens,
+    cacheRebuilds: s.cacheRebuilds,
+    idleRebuilds: s.idleRebuilds,
   });
 }
 
