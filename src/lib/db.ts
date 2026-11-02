@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS usage_events (
   output_tokens INTEGER NOT NULL DEFAULT 0,
   cache_write_tokens INTEGER NOT NULL DEFAULT 0,
   cache_read_tokens INTEGER NOT NULL DEFAULT 0,
-  cost_usd REAL NOT NULL
+  cost_usd REAL NOT NULL,
+  cache_rebuilds INTEGER NOT NULL DEFAULT 0,
+  idle_rebuilds INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON usage_events (ts);
 CREATE INDEX IF NOT EXISTS idx_events_repo_pr ON usage_events (repo, pr);
@@ -47,24 +49,33 @@ export function getDb(): DatabaseSync {
   db = new DatabaseSync(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
+  migrate(db);
   const { n } = db.prepare("SELECT COUNT(*) AS n FROM usage_events").get() as { n: number };
   if (n === 0 && process.env.SEED_DEMO !== "false") insertEvents(seedEvents());
   return db;
+}
+
+// Databases created before the cache tab lack the rebuild columns.
+function migrate(conn: DatabaseSync) {
+  const cols = new Set((conn.prepare("PRAGMA table_info(usage_events)").all() as { name: string }[]).map((c) => c.name));
+  for (const col of ["cache_rebuilds", "idle_rebuilds"]) {
+    if (!cols.has(col)) conn.exec(`ALTER TABLE usage_events ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`);
+  }
 }
 
 export function insertEvents(events: UsageEventInput[]): number {
   const conn = db ?? getDb();
   const stmt = conn.prepare(`
     INSERT INTO usage_events (ts, repo, pr, pr_title, branch, author, tool, model, session_id,
-      input_tokens, output_tokens, cache_write_tokens, cache_read_tokens, cost_usd)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      input_tokens, output_tokens, cache_write_tokens, cache_read_tokens, cost_usd, cache_rebuilds, idle_rebuilds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   conn.exec("BEGIN");
   try {
     for (const e of events) {
       stmt.run(
         e.ts, e.repo, e.pr ?? null, e.prTitle ?? null, e.branch ?? null, e.author, e.tool, e.model,
         e.sessionId ?? null, e.inputTokens, e.outputTokens, e.cacheWriteTokens, e.cacheReadTokens,
-        costUsd(e.model, e),
+        costUsd(e.model, e), e.cacheRebuilds ?? 0, e.idleRebuilds ?? 0,
       );
     }
     conn.exec("COMMIT");

@@ -1,5 +1,6 @@
 import "server-only";
 import { connection } from "next/server";
+import { cacheLoss, cacheSavings, diagnose, hitRate, promptTokens, type CacheCause, type CacheCounts, type CacheSession } from "./cache";
 import { getDb } from "./db";
 
 export const RANGES = [7, 30, 90] as const;
@@ -170,4 +171,126 @@ export async function getPrTitle(repo: string, pr: number): Promise<string | nul
     .prepare("SELECT MAX(pr_title) AS title FROM usage_events WHERE repo = ? AND pr = ?")
     .get(repo, pr) as { title: string | null } | undefined;
   return row?.title ?? null;
+}
+
+// ---- prompt cache -------------------------------------------------------------
+
+export type CacheTotals = {
+  hitRate: number;
+  saved: number;
+  lost: number;
+  rebuilds: number;
+  idleRebuilds: number;
+  brokenSessions: number;
+  sessions: number;
+};
+export type CacheBreakdown = { key: string; hitRate: number; saved: number; lost: number; promptTokens: number };
+
+type CacheRow = CacheCounts & {
+  sid: string;
+  sessionId: string | null;
+  repo: string;
+  pr: number | null;
+  author: string;
+  tool: string;
+  model: string;
+  ts: string;
+  cacheRebuilds: number;
+  idleRebuilds: number;
+};
+
+// One row per session and model. Savings and losses depend on each model's price, so they are summed in JS.
+async function cacheRows(days: number, scope: Scope): Promise<CacheRow[]> {
+  const { db, since, where, params } = await scoped(days, scope);
+  return db
+    .prepare(
+      `SELECT COALESCE(session_id, 'event-' || id) AS sid, session_id AS sessionId, MAX(repo) AS repo, MAX(pr) AS pr,
+         MAX(author) AS author, MAX(tool) AS tool, model, MIN(ts) AS ts,
+         SUM(input_tokens) AS inputTokens, SUM(cache_write_tokens) AS cacheWriteTokens, SUM(cache_read_tokens) AS cacheReadTokens,
+         SUM(cache_rebuilds) AS cacheRebuilds, SUM(idle_rebuilds) AS idleRebuilds
+       FROM usage_events WHERE ts >= ?${where} GROUP BY sid, model`,
+    )
+    .all(since, ...params) as CacheRow[];
+}
+
+function sumCounts<T extends CacheCounts>(rows: T[]): CacheCounts {
+  return rows.reduce(
+    (a, r) => ({
+      inputTokens: a.inputTokens + r.inputTokens,
+      cacheWriteTokens: a.cacheWriteTokens + r.cacheWriteTokens,
+      cacheReadTokens: a.cacheReadTokens + r.cacheReadTokens,
+    }),
+    { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 },
+  );
+}
+
+export async function getCacheReport(days: number, scope: Scope = {}) {
+  const rows = await cacheRows(days, scope);
+
+  const bySession = new Map<string, CacheSession>();
+  for (const r of rows) {
+    const s = bySession.get(r.sid) ?? {
+      sessionId: r.sessionId, repo: r.repo, pr: r.pr, author: r.author, tool: r.tool, models: "", ts: r.ts,
+      inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, cacheRebuilds: 0, idleRebuilds: 0, lost: 0,
+    };
+    s.models = s.models ? `${s.models},${r.model}` : r.model;
+    s.ts = r.ts < s.ts ? r.ts : s.ts;
+    s.inputTokens += r.inputTokens;
+    s.cacheWriteTokens += r.cacheWriteTokens;
+    s.cacheReadTokens += r.cacheReadTokens;
+    s.cacheRebuilds += r.cacheRebuilds;
+    s.idleRebuilds += r.idleRebuilds;
+    s.lost += cacheLoss(r.model, r);
+    bySession.set(r.sid, s);
+  }
+  const sessions = [...bySession.values()];
+  const broken = sessions.filter((s) => diagnose(s).length > 0);
+
+  const totals: CacheTotals = {
+    hitRate: hitRate(sumCounts(rows)),
+    saved: rows.reduce((a, r) => a + cacheSavings(r.model, r), 0),
+    lost: sessions.reduce((a, s) => a + s.lost, 0),
+    rebuilds: sessions.reduce((a, s) => a + s.cacheRebuilds, 0),
+    idleRebuilds: sessions.reduce((a, s) => a + s.idleRebuilds, 0),
+    brokenSessions: broken.length,
+    sessions: sessions.length,
+  };
+
+  const breakdown = (key: (r: CacheRow) => string): CacheBreakdown[] => {
+    const groups = new Map<string, CacheRow[]>();
+    for (const r of rows) groups.set(key(r), [...(groups.get(key(r)) ?? []), r]);
+    return [...groups]
+      .map(([k, rs]) => {
+        const c = sumCounts(rs);
+        return {
+          key: k,
+          hitRate: hitRate(c),
+          saved: rs.reduce((a, r) => a + cacheSavings(r.model, r), 0),
+          lost: rs.reduce((a, r) => a + cacheLoss(r.model, r), 0),
+          promptTokens: promptTokens(c),
+        };
+      })
+      .sort((a, b) => b.lost - a.lost || b.promptTokens - a.promptTokens);
+  };
+
+  // Which causes cost the most, across all broken sessions.
+  const causes = new Map<string, { cause: CacheCause; sessions: number; lost: number }>();
+  for (const s of broken) {
+    const found = diagnose(s);
+    for (const c of found) {
+      const e = causes.get(c.id) ?? { cause: c, sessions: 0, lost: 0 };
+      e.sessions += 1;
+      e.lost += s.lost / found.length;
+      causes.set(c.id, e);
+    }
+  }
+
+  return {
+    totals,
+    byModel: breakdown((r) => r.model),
+    byTool: breakdown((r) => r.tool),
+    byAuthor: breakdown((r) => r.author),
+    causes: [...causes.values()].sort((a, b) => b.lost - a.lost),
+    worst: broken.sort((a, b) => b.lost - a.lost).slice(0, 25),
+  };
 }

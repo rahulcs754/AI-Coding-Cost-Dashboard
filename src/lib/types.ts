@@ -14,6 +14,10 @@ export type UsageEventInput = TokenCounts & {
   tool: Tool;
   model: string;
   sessionId?: string | null;
+  /** Calls after the first that rebuilt the prompt cache instead of reading it. */
+  cacheRebuilds?: number;
+  /** Of those, rebuilds that came after the cache expired (idle over the TTL). */
+  idleRebuilds?: number;
 };
 
 export type UsageEvent = UsageEventInput & { id: number; costUsd: number };

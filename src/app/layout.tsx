@@ -36,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <nav className="ml-auto flex gap-3 text-sm sm:gap-4">
               <Link href="/" className="text-muted hover:text-foreground">Overview</Link>
               <Link href="/users" className="text-muted hover:text-foreground">Users</Link>
+              <Link href="/cache" className="text-muted hover:text-foreground">Cache</Link>
               <Link href="/team" className="text-muted hover:text-foreground">Team</Link>
             </nav>
             <Suspense>

@@ -26,6 +26,10 @@ export function parseEvent(raw: unknown, index = 0): Result {
     cacheReadTokens: e.cacheReadTokens ?? 0,
   };
   for (const [k, v] of Object.entries(counts)) if (!isCount(v)) return fail(`${k} must be a non-negative integer`);
+  const cacheRebuilds = e.cacheRebuilds ?? 0;
+  const idleRebuilds = e.idleRebuilds ?? 0;
+  if (!isCount(cacheRebuilds)) return fail("cacheRebuilds must be a non-negative integer");
+  if (!isCount(idleRebuilds) || idleRebuilds > cacheRebuilds) return fail("idleRebuilds must be a non-negative integer, at most cacheRebuilds");
 
   return {
     ok: true,
@@ -39,6 +43,8 @@ export function parseEvent(raw: unknown, index = 0): Result {
       tool,
       model: e.model,
       sessionId: optStr(e.sessionId),
+      cacheRebuilds,
+      idleRebuilds,
       ...(counts as Record<keyof typeof counts, number>),
     },
   };
